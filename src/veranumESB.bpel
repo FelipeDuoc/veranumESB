@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<process
+    name="veranumESB"
+    targetNamespace="http://enterprise.netbeans.org/bpel/VeranumESB/veranumESB"
+    xmlns:tns="http://enterprise.netbeans.org/bpel/VeranumESB/veranumESB"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns="http://docs.oasis-open.org/wsbpel/2.0/process/executable"
+    xmlns:sxt="http://www.sun.com/wsbpel/2.0/process/executable/SUNExtension/Trace" 
+    xmlns:sxed="http://www.sun.com/wsbpel/2.0/process/executable/SUNExtension/Editor2"
+    xmlns:sxat="http://www.sun.com/wsbpel/2.0/process/executable/SUNExtension/Attachment"
+    xmlns:sxeh="http://www.sun.com/wsbpel/2.0/process/executable/SUNExtension/ErrorHandling">
+    <import namespace="http://j2ee.netbeans.org/wsdl/VeranumESB/Descriptor/VeranumWDSL" location="Descriptor/VeranumWDSL.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <import namespace="http://enterprise.netbeans.org/bpel/servicioServExtraWrapper" location="servicioServExtraWrapper.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <import namespace="http://servicio/" location="http://localhost:9120/servicioservextra/servicioServExtra?WSDL" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <import namespace="http://enterprise.netbeans.org/bpel/servicioConvenioWrapper" location="servicioConvenioWrapper.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <import namespace="http://servicio/" location="http://localhost:9120/servicioconvenio/servicioConvenio?WSDL" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <partnerLinks>
+        <partnerLink name="ServicioExtra" xmlns:tns="http://enterprise.netbeans.org/bpel/servicioServExtraWrapper" partnerLinkType="tns:servicioServExtraLinkType" partnerRole="servicioServExtraRole"/>
+        <partnerLink name="ServicioConvenio" xmlns:tns="http://enterprise.netbeans.org/bpel/servicioConvenioWrapper" partnerLinkType="tns:servicioConvenioLinkType" partnerRole="servicioConvenioRole"/>
+        <partnerLink name="Veranum" xmlns:tns="http://j2ee.netbeans.org/wsdl/VeranumESB/Descriptor/VeranumWDSL" partnerLinkType="tns:VeranumWDSL" myRole="VeranumWDSLPortTypeRole"/>
+    </partnerLinks>
+    <variables>
+        <variable name="ValidaClienteOut" xmlns:tns="http://servicio/" messageType="tns:validaClienteResponse"/>
+        <variable name="ValidaClienteIn" xmlns:tns="http://servicio/" messageType="tns:validaCliente"/>
+        <variable name="ReservarServicioOut" xmlns:tns="http://servicio/" messageType="tns:reservarServicioResponse"/>
+        <variable name="ReservarServicioIn" xmlns:tns="http://servicio/" messageType="tns:reservarServicio"/>
+        <variable name="VeranumWDSLOperationOut" xmlns:tns="http://j2ee.netbeans.org/wsdl/VeranumESB/Descriptor/VeranumWDSL" messageType="tns:VeranumWDSLOperationResponse"/>
+        <variable name="VeranumWDSLOperationIn" xmlns:tns="http://j2ee.netbeans.org/wsdl/VeranumESB/Descriptor/VeranumWDSL" messageType="tns:VeranumWDSLOperationRequest"/>
+    </variables>
+    <sequence>
+        <receive name="Recepcion" createInstance="yes" partnerLink="Veranum" operation="VeranumWDSLOperation" xmlns:tns="http://j2ee.netbeans.org/wsdl/VeranumESB/Descriptor/VeranumWDSL" portType="tns:VeranumWDSLPortType" variable="VeranumWDSLOperationIn"/>
+        <assign name="AsignaServicioExtra">
+            <copy>
+                <from variable="VeranumWDSLOperationIn" part="idServicioExtra"/>
+                <to>$ReservarServicioIn.parameters/idServicio</to>
+            </copy>
+        </assign>
+        <invoke name="ReservaServicioExtra" partnerLink="ServicioExtra" operation="reservarServicio" xmlns:tns="http://servicio/" portType="tns:servicioServExtra" inputVariable="ReservarServicioIn" outputVariable="ReservarServicioOut"/>
+        <assign name="AsignaCliente">
+            <copy>
+                <from variable="VeranumWDSLOperationIn" part="rutCliente"/>
+                <to>$ValidaClienteIn.parameters/rut</to>
+            </copy>
+            <copy>
+                <from variable="VeranumWDSLOperationIn" part="empresaCliente"/>
+                <to>$ValidaClienteIn.parameters/empresa</to>
+            </copy>
+        </assign>
+        <invoke name="ValidaCliente" partnerLink="ServicioConvenio" operation="validaCliente" xmlns:tns="http://servicio/" portType="tns:servicioConvenio" inputVariable="ValidaClienteIn" outputVariable="ValidaClienteOut"/>
+        <assign name="AsignaRespuesta">
+            <copy>
+                <from>$ValidaClienteOut.parameters/return</from>
+                <to variable="VeranumWDSLOperationOut" part="respuestaConvenio"/>
+            </copy>
+            <copy>
+                <from>$ReservarServicioOut.parameters/return</from>
+                <to variable="VeranumWDSLOperationOut" part="respuestaServicio"/>
+            </copy>
+        </assign>
+        <reply name="Respuesta" partnerLink="Veranum" operation="VeranumWDSLOperation" xmlns:tns="http://j2ee.netbeans.org/wsdl/VeranumESB/Descriptor/VeranumWDSL" portType="tns:VeranumWDSLPortType" variable="VeranumWDSLOperationOut"/>
+    </sequence>
+</process>
